@@ -120,6 +120,12 @@
 			if (this._moduleDefs.hasOwnProperty(i)) {
 				moduleDef = this._moduleDefs[i];
 				moduleDefString = moduleDef.toString();
+				
+				// Clean definition
+				moduleDefString
+					.replace(/(\/\*\*[.\s\S]*?\*\/)/g, '')
+					.replace(/^[.\s]*?\/\/[.\s\S]*?$/gm, '');
+				
 				moduleDeps = this._dependencyList(moduleDef);
 				
 				// Loop the module names array
