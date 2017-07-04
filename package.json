@@ -1,0 +1,19 @@
+{
+	"name": "irrelon-appcore",
+	"version": "1.0.1",
+	"description": "A very lightweight application dependency manager for maintaining clean modularised code without polluting the global namespace.",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Irrelon/irrelon-appcore.git"
+	},
+	"author": "Rob Evans",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/Irrelon/irrelon-appcore/issues"
+	},
+	"homepage": "https://github.com/Irrelon/irrelon-appcore"
+}
