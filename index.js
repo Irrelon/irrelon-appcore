@@ -124,7 +124,7 @@
 				// Clean definition
 				moduleDefString = moduleDefString
 					.replace(/(\/\*\*[.\s\S]*?\*\/)/g, '')
-					.replace(/^[.\s]*?\/\/[.\s\S]*?$/gm, '');
+					.replace(/\/\/[.\s\S]*?$/gm, '');
 				
 				moduleDeps = this._dependencyList(moduleDef);
 				
@@ -174,7 +174,7 @@
 			return this._modules[moduleName];
 		}
 		
-		if (this._modules[moduleName]) {
+		if (this._modules[moduleName] !== undefined) {
 			throw('Cannot redefine module "' + moduleName + '" - it has already been defined!');
 		}
 		
@@ -306,7 +306,7 @@
 	 */
 	AppCore.prototype._waitForModule = function (moduleName, callback) {
 		// Check if the module we are waiting for already exists
-		if (this._modules[moduleName]) {
+		if (this._modules[moduleName] !== undefined) {
 			// The module is already loaded, callback now
 			callback(moduleName, this._modules[moduleName]);
 			return this;
@@ -333,7 +333,7 @@
 		
 		// Tell any modules waiting for this one that we are
 		// loaded and ready
-		waitingArr = this._waiting[moduleName];
+		waitingArr = this._waiting[moduleName] || null;
 		
 		if (!waitingArr || !waitingArr.length) {
 			// Nothing is waiting for us, exit
@@ -362,7 +362,7 @@
 	 */
 	AppCore.prototype._registerModule = function (moduleName, func, args) {
 		console.log('AppCore: ' + moduleName + ': Loaded');
-		this._modules[moduleName] = func.apply(func, args);
+		this._modules[moduleName] = func.apply(func, args) || null;
 		this._moduleDefs[moduleName] = func;
 		this._moduleLoaded(moduleName);
 	};
