@@ -63,6 +63,10 @@
 		// has will be a string in the moduleDeps array at index 2
 		// if any dependencies were provided.
 		moduleDeps = moduleRegExp.exec(moduleString);
+		moduleString = moduleString
+			.replace(/\n/g, '')
+			.replace(/\r/g, '')
+			.replace(/\t/g, '');
 		
 		// Check if the module has dependencies
 		if (!moduleDeps || !moduleDeps.length || moduleDeps[2] === "") {
@@ -154,6 +158,10 @@
 		
 		// Stringify the module function
 		moduleString = moduleDefinition.toString();
+		moduleString = moduleString
+			.replace(/\n/g, '')
+			.replace(/\r/g, '')
+			.replace(/\t/g, '');
 		
 		// Scan module function string to extract dependencies
 		// via the regular expression. The dependencies this module
