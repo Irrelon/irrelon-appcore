@@ -105,6 +105,7 @@
 	AppCore.prototype.sanityCheck = function () {
 		var i,
 			moduleDef,
+			moduleDefString,
 			moduleDeps,
 			moduleNamesArr,
 			nameIndex,
@@ -117,15 +118,16 @@
 		for (i in this._moduleDefs) {
 			if (this._moduleDefs.hasOwnProperty(i)) {
 				moduleDef = this._moduleDefs[i];
+				moduleDefString = moduleDef.toString();
 				moduleDeps = this._dependencyList(moduleDef);
 				
 				// Loop the module names array
 				for (nameIndex = 0; nameIndex < moduleNamesArr.length; nameIndex++) {
 					moduleName = moduleNamesArr[nameIndex];
 					
-					if (moduleDeps.arr.indexOf(moduleName) === -1) {
+					if (moduleName.toLowerCase() !== i.toLowerCase() && moduleDeps.arr.indexOf(moduleName) === -1) {
 						// Check for module usage without dependecy injection
-						if (moduleDef.toString().indexOf(moduleName)) {
+						if (moduleDefString.indexOf(moduleName)) {
 							console.warn('AppCore: Module "' + i + '" might require un-injected module "' + moduleName + '"');
 						}
 					}
