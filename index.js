@@ -106,6 +106,7 @@
 		var i,
 			moduleDef,
 			moduleDefString,
+			moduleNameRegExp,
 			moduleDeps,
 			moduleNamesArr,
 			nameIndex,
@@ -124,10 +125,11 @@
 				// Loop the module names array
 				for (nameIndex = 0; nameIndex < moduleNamesArr.length; nameIndex++) {
 					moduleName = moduleNamesArr[nameIndex];
+					moduleNameRegExp = new RegExp('\b' + moduleName + '\b');
 					
 					if (moduleName.toLowerCase() !== i.toLowerCase() && moduleDeps.arr.indexOf(moduleName) === -1) {
-						// Check for module usage without dependecy injection
-						if (moduleDefString.indexOf(moduleName)) {
+						// Check for module usage without dependency injection
+						if (moduleNameRegExp.test(moduleDefString)) {
 							console.warn('AppCore: Module "' + i + '" might require un-injected module "' + moduleName + '"');
 						}
 					}
