@@ -1,6 +1,6 @@
 {
 	"name": "irrelon-appcore",
-	"version": "1.0.13",
+	"version": "1.0.14",
 	"description": "A very lightweight application dependency manager for maintaining clean modularised code without polluting the global namespace.",
 	"main": "index.js",
 	"scripts": {

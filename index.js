@@ -32,6 +32,8 @@
 		// The object that holds a reference to callbacks that
 		// are waiting for a module to become available / loaded
 		this._waiting = {};
+		
+		this._logLevel = 2;
 	};
 	
 	/**
@@ -178,7 +180,7 @@
 			throw('Cannot redefine module "' + moduleName + '" - it has already been defined!');
 		}
 		
-		console.log('AppCore: ' + moduleName + ': Init...');
+		if (this._logLevel >= 4) { console.log('AppCore: ' + moduleName + ': Init...'); }
 		
 		// Convert dependency list to an array
 		moduleDeps = this._dependencyList(moduleDefinition);
@@ -187,11 +189,11 @@
 		// Check if the module has dependencies
 		if (!moduleDepsArr.length) {
 			// No dependencies were found, just register the module
-			console.log('AppCore: ' + moduleName + ': Has no dependencies');
+			if (this._logLevel >= 4) { console.log('AppCore: ' + moduleName + ': Has no dependencies'); }
 			return this._registerModule(moduleName, moduleDefinition, []);
 		}
 		
-		console.log('AppCore: ' + moduleName + ': Has ' + moduleDepsArr.length + ' dependenc' + (moduleDepsArr.length > 1 ? 'ies' : 'y') + ' (' + moduleDepsArr.join(', ') + ')');
+		if (this._logLevel >= 4) { console.log('AppCore: ' + moduleName + ': Has ' + moduleDepsArr.length + ' dependenc' + (moduleDepsArr.length > 1 ? 'ies' : 'y') + ' (' + moduleDepsArr.join(', ') + ')'); }
 		
 		// Grab the dependencies we need - this is a really simple way
 		// to check we got our dependencies by how many times this function
@@ -202,7 +204,7 @@
 			
 			dependenciesSatisfied++;
 			
-			console.log('AppCore: ' + moduleName + ': Found dependency "' + dependencyName + '"');
+			if (self._logLevel >= 4) { console.log('AppCore: ' + moduleName + ': Found dependency "' + dependencyName + '"'); }
 			
 			// Check which index this dependency should be in
 			depArgumentIndex = moduleDepsArr.indexOf(dependencyName);
@@ -217,7 +219,7 @@
 			// Check if we have all the dependencies we need
 			if (dependenciesSatisfied === moduleDepsArr.length) {
 				// We have our dependencies, load the module! YAY!
-				console.log('AppCore: ' + moduleName + ': Has all required dependencies, loading...');
+				if (self._logLevel >= 4) { console.log('AppCore: ' + moduleName + ': Has all required dependencies, loading...'); }
 				return self._registerModule(moduleName, moduleDefinition, depArgumentArr);
 			}
 		};
@@ -246,7 +248,7 @@
 	 */
 	AppCore.prototype.generateDependencyTimeout = function (moduleName, dependencyName) {
 		return function () {
-			console.error('AppCore: ' + moduleName + ': Dependency failed to load in time: ' + dependencyName);
+			if (this._logLevel >= 1) { console.error('AppCore: ' + moduleName + ': Dependency failed to load in time: ' + dependencyName); }
 		};
 	};
 	
@@ -361,7 +363,7 @@
 	 * @private
 	 */
 	AppCore.prototype._registerModule = function (moduleName, func, args) {
-		console.log('AppCore: ' + moduleName + ': Loaded');
+		if (this._logLevel >= 4) { console.log('AppCore: ' + moduleName + ': Loaded'); }
 		this._modules[moduleName] = func.apply(func, args) || null;
 		this._moduleDefs[moduleName] = func;
 		this._moduleLoaded(moduleName);
