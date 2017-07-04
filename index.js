@@ -122,7 +122,7 @@
 				moduleDefString = moduleDef.toString();
 				
 				// Clean definition
-				moduleDefString
+				moduleDefString = moduleDefString
 					.replace(/(\/\*\*[.\s\S]*?\*\/)/g, '')
 					.replace(/^[.\s]*?\/\/[.\s\S]*?$/gm, '');
 				
