@@ -154,7 +154,7 @@
 			throw('Cannot redefine module "' + moduleName + '" - it has already been defined!');
 		}
 		
-		console.log(moduleName + ': Init...');
+		console.log('AppCore: ' + moduleName + ': Init...');
 		
 		// Stringify the module function
 		moduleString = moduleDefinition.toString();
@@ -172,7 +172,7 @@
 		// Check if the module has dependencies
 		if (!moduleDeps || !moduleDeps.length || moduleDeps[2] === "") {
 			// No dependencies were found, just register the module
-			console.log(moduleName + ': Has no dependencies');
+			console.log('AppCore: ' + moduleName + ': Has no dependencies');
 			return this._registerModule(moduleName, moduleDefinition, []);
 		}
 		
@@ -182,7 +182,7 @@
 		// Convert dependency list to an array
 		moduleDepsArr = moduleDeps[2].split(',');
 		
-		console.log(moduleName + ': Has ' + moduleDepsArr.length + ' dependenc' + (moduleDepsArr.length > 1 ? 'ies' : 'y') + ' (' + moduleDepsArr.join(', ') + ')');
+		console.log('AppCore: ' + moduleName + ': Has ' + moduleDepsArr.length + ' dependenc' + (moduleDepsArr.length > 1 ? 'ies' : 'y') + ' (' + moduleDepsArr.join(', ') + ')');
 		
 		// Grab the dependencies we need - this is a really simple way
 		// to check we got our dependencies by how many times this function
@@ -193,7 +193,7 @@
 			
 			dependenciesSatisfied++;
 			
-			console.log(moduleName + ': Found dependency "' + dependencyName + '"');
+			console.log('AppCore: ' + moduleName + ': Found dependency "' + dependencyName + '"');
 			
 			// Check which index this dependency should be in
 			depArgumentIndex = moduleDepsArr.indexOf(dependencyName);
@@ -208,7 +208,7 @@
 			// Check if we have all the dependencies we need
 			if (dependenciesSatisfied === moduleDepsArr.length) {
 				// We have our dependencies, load the module! YAY!
-				console.log(moduleName + ': Has all required dependencies, loading...');
+				console.log('AppCore: ' + moduleName + ': Has all required dependencies, loading...');
 				return self._registerModule(moduleName, moduleDefinition, depArgumentArr);
 			}
 		};
@@ -237,7 +237,7 @@
 	 */
 	AppCore.prototype.generateDependencyTimeout = function (moduleName, dependencyName) {
 		return function () {
-			console.error(moduleName + ': Dependency failed to load in time: ' + dependencyName);
+			console.error('AppCore: ' + moduleName + ': Dependency failed to load in time: ' + dependencyName);
 		};
 	};
 	
@@ -307,7 +307,7 @@
 	 * @private
 	 */
 	AppCore.prototype._registerModule = function (moduleName, func, args) {
-		console.log(moduleName + ': Loaded');
+		console.log('AppCore: ' + moduleName + ': Loaded');
 		this._modules[moduleName] = func.apply(func, args);
 		this._moduleLoaded(moduleName);
 	};
