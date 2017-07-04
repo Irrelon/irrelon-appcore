@@ -27,6 +27,7 @@
 		// The object that holds references to all the app's
 		// modules that are defined by appCore.module().
 		this._modules = {};
+		this._moduleDefs = {};
 		
 		// The object that holds a reference to callbacks that
 		// are waiting for a module to become available / loaded
@@ -41,9 +42,7 @@
 	 * @returns {AppCore} Returns "this" to allow chaining.
 	 */
 	AppCore.prototype.depends = function (functionDefinition) {
-		var moduleString,
-			moduleRegExp = /^function(.*?)\((.*?)\)/gi,
-			moduleDeps,
+		var moduleDeps,
 			moduleDepsArr,
 			depArgumentArr = [],
 			dependenciesSatisfied = 0,
@@ -55,30 +54,15 @@
 			throw('You must provide a function as the first argument to appCore.depends()!');
 		}
 		
-		// Stringify the module function
-		moduleString = functionDefinition.toString();
-		
-		// Scan module function string to extract dependencies
-		// via the regular expression. The dependencies this module
-		// has will be a string in the moduleDeps array at index 2
-		// if any dependencies were provided.
-		moduleDeps = moduleRegExp.exec(moduleString);
-		moduleString = moduleString
-			.replace(/\n/g, '')
-			.replace(/\r/g, '')
-			.replace(/\t/g, '');
+		// Convert dependency list to an array
+		moduleDeps = this._dependencyList(functionDefinition);
+		moduleDepsArr = moduleDeps.arr;
 		
 		// Check if the module has dependencies
-		if (!moduleDeps || !moduleDeps.length || moduleDeps[2] === "") {
-			// No dependencies were found, exit
-			return;
+		if (!moduleDepsArr.length) {
+			// No dependencies were found
+			return this;
 		}
-		
-		// Clean the dependency list by removing whitespace
-		moduleDeps[2] = moduleDeps[2].replace(/ /gi, '');
-		
-		// Convert dependency list to an array
-		moduleDepsArr = moduleDeps[2].split(',');
 		
 		// Grab the dependencies we need - this is a really simple way
 		// to check we got our dependencies by how many times this function
@@ -109,13 +93,45 @@
 		for (depIndex = 0; depIndex < moduleDepsArr.length; depIndex++) {
 			// Create a timeout that will cause a browser error if we are
 			// waiting too long for a dependency to arrive
-			depTimeout[depIndex] = setTimeout(this.generateDependencyTimeout(moduleDeps[0], moduleDepsArr[depIndex]), 3000);
+			depTimeout[depIndex] = setTimeout(this.generateDependencyTimeout(moduleDeps.func, moduleDepsArr[depIndex]), 3000);
 			
 			// Now ask to wait for the module
 			this._waitForModule(moduleDepsArr[depIndex], gotDependency);
 		}
 		
 		return this;
+	};
+	
+	AppCore.prototype.sanityCheck = function () {
+		var i,
+			moduleDef,
+			moduleDeps,
+			moduleNamesArr,
+			nameIndex,
+			moduleName;
+		
+		// Grab all module names
+		moduleNamesArr = Object.keys(this._moduleDefs);
+		
+		// Loop the modules
+		for (i in this._moduleDefs) {
+			if (this._moduleDefs.hasOwnProperty(i)) {
+				moduleDef = this._moduleDefs[i];
+				moduleDeps = this._dependencyList(moduleDef);
+				
+				// Loop the module names array
+				for (nameIndex = 0; nameIndex < moduleNamesArr.length; nameIndex++) {
+					moduleName = moduleNamesArr[nameIndex];
+					
+					if (moduleDeps.indexOf(moduleName) === -1) {
+						// Check for module usage without dependecy injection
+						if (moduleDef.toString().indexOf(moduleName)) {
+							console.warn('AppCore: Module "' + i + '" might require un-injected module "' + moduleName + '"');
+						}
+					}
+				}
+			}
+		}
 	};
 	
 	/**
@@ -132,8 +148,6 @@
 	 */
 	AppCore.prototype.module = function (moduleName, moduleDefinition) {
 		var self = this,
-			moduleString,
-			moduleRegExp = /^function(.*?)\((.*?)\)/gi,
 			moduleDeps,
 			moduleDepsArr,
 			depArgumentArr = [],
@@ -156,31 +170,16 @@
 		
 		console.log('AppCore: ' + moduleName + ': Init...');
 		
-		// Stringify the module function
-		moduleString = moduleDefinition.toString();
-		moduleString = moduleString
-			.replace(/\n/g, '')
-			.replace(/\r/g, '')
-			.replace(/\t/g, '');
-		
-		// Scan module function string to extract dependencies
-		// via the regular expression. The dependencies this module
-		// has will be a string in the moduleDeps array at index 2
-		// if any dependencies were provided.
-		moduleDeps = moduleRegExp.exec(moduleString);
+		// Convert dependency list to an array
+		moduleDeps = this._dependencyList(moduleDefinition);
+		moduleDepsArr = moduleDeps.arr;
 		
 		// Check if the module has dependencies
-		if (!moduleDeps || !moduleDeps.length || moduleDeps[2] === "") {
+		if (!moduleDepsArr.length) {
 			// No dependencies were found, just register the module
 			console.log('AppCore: ' + moduleName + ': Has no dependencies');
 			return this._registerModule(moduleName, moduleDefinition, []);
 		}
-		
-		// Clean the dependency list by removing whitespace
-		moduleDeps[2] = moduleDeps[2].replace(/ /gi, '');
-		
-		// Convert dependency list to an array
-		moduleDepsArr = moduleDeps[2].split(',');
 		
 		console.log('AppCore: ' + moduleName + ': Has ' + moduleDepsArr.length + ' dependenc' + (moduleDepsArr.length > 1 ? 'ies' : 'y') + ' (' + moduleDepsArr.join(', ') + ')');
 		
@@ -238,6 +237,51 @@
 	AppCore.prototype.generateDependencyTimeout = function (moduleName, dependencyName) {
 		return function () {
 			console.error('AppCore: ' + moduleName + ': Dependency failed to load in time: ' + dependencyName);
+		};
+	};
+	
+	/**
+	 * Reads a function's definition and finds argument dependencies.
+	 * @param moduleDefinition
+	 * @returns {Array} An array of dependency names.
+	 * @private
+	 */
+	AppCore.prototype._dependencyList = function (moduleDefinition) {
+		var moduleString,
+			moduleDeps,
+			moduleDepsArr,
+			moduleRegExp = /^function(.*?)\((.*?)\)/gi;
+		
+		// Stringify the module function
+		moduleString = moduleDefinition.toString();
+		moduleString = moduleString
+			.replace(/\n/g, '')
+			.replace(/\r/g, '')
+			.replace(/\t/g, '');
+		
+		// Scan module function string to extract dependencies
+		// via the regular expression. The dependencies this module
+		// has will be a string in the moduleDeps array at index 2
+		// if any dependencies were provided.
+		moduleDeps = moduleRegExp.exec(moduleString);
+		
+		// Check if the module has dependencies
+		if (!moduleDeps || !moduleDeps.length || moduleDeps[2] === "") {
+			// No dependencies were found
+			return {
+				arr: []
+			};
+		}
+		
+		// Clean the dependency list by removing whitespace
+		moduleDeps[2] = moduleDeps[2].replace(/ /gi, '');
+		
+		// Convert dependency list to an array
+		moduleDepsArr = moduleDeps[2].split(',');
+		
+		return {
+			arr: moduleDepsArr,
+			func: moduleDeps[0]
 		};
 	};
 	
@@ -309,6 +353,7 @@
 	AppCore.prototype._registerModule = function (moduleName, func, args) {
 		console.log('AppCore: ' + moduleName + ': Loaded');
 		this._modules[moduleName] = func.apply(func, args);
+		this._moduleDefs[moduleName] = func;
 		this._moduleLoaded(moduleName);
 	};
 	
