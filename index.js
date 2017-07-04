@@ -123,7 +123,7 @@
 				for (nameIndex = 0; nameIndex < moduleNamesArr.length; nameIndex++) {
 					moduleName = moduleNamesArr[nameIndex];
 					
-					if (moduleDeps.indexOf(moduleName) === -1) {
+					if (moduleDeps.arr.indexOf(moduleName) === -1) {
 						// Check for module usage without dependecy injection
 						if (moduleDef.toString().indexOf(moduleName)) {
 							console.warn('AppCore: Module "' + i + '" might require un-injected module "' + moduleName + '"');
