@@ -14,6 +14,8 @@
 (function () {
 	"use strict";
 	
+	var singelton;
+	
 	/**
 	 * The main application class that ties all the application
 	 * modules together and exposes the appCore to the global scope
@@ -302,12 +304,14 @@
 		this._moduleLoaded(moduleName);
 	};
 	
+	singelton = new AppCore();
+	
 	// Create the appCore instance and add to global scope
 	if (typeof module  !== 'undefined' && typeof module.exports !== 'undefined') {
-		module.exports = new AppCore();
+		module.exports = singelton;
 	}
 	
 	if (typeof window !== 'undefined') {
-		window.appCore = new AppCore();
+		window.appCore = singelton;
 	}
 })();
