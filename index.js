@@ -305,7 +305,9 @@
 	// Create the appCore instance and add to global scope
 	if (typeof module  !== 'undefined' && typeof module.exports !== 'undefined') {
 		module.exports = new AppCore();
-	} else if (typeof window !== 'undefined') {
+	}
+	
+	if (typeof window !== 'undefined') {
 		window.appCore = new AppCore();
 	}
 })();
