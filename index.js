@@ -125,7 +125,7 @@
 				// Loop the module names array
 				for (nameIndex = 0; nameIndex < moduleNamesArr.length; nameIndex++) {
 					moduleName = moduleNamesArr[nameIndex];
-					moduleNameRegExp = new RegExp('\b' + moduleName + '\b');
+					moduleNameRegExp = new RegExp('\\b' + moduleName + '\\b');
 					
 					if (moduleName.toLowerCase() !== i.toLowerCase() && moduleDeps.arr.indexOf(moduleName) === -1) {
 						// Check for module usage without dependency injection
