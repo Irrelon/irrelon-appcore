@@ -29,6 +29,8 @@
 		this._config = [];
 		this._run = [];
 		
+		this._initialised = false;
+		
 		if (this._appCore._logLevel >= 4) { console.log('AppCore: ' + this._moduleName + ': Init...'); }
 	};
 	
@@ -38,8 +40,6 @@
 	 * @param definition
 	 */
 	AppCoreModule.prototype.config = function (definition, callback) {
-		var i;
-		
 		if (definition) {
 			this._config.push(definition);
 			return this;
@@ -58,12 +58,15 @@
 	 * @param definition
 	 */
 	AppCoreModule.prototype.run = function (definition, callback) {
-		var i;
-		
 		if (definition) {
 			this._run.push(definition);
+		}
+		
+		if (definition && !this._initialised) {
 			return this;
 		}
+		
+		this._initialised = true;
 		
 		// Execute all run blocks
 		this._appCore._executeQueue(this._run, function (err, valueArr) {
@@ -120,6 +123,7 @@
 		//this.emit('destroy');
 		if (this._appCore._logLevel >= 4) { console.log('AppCore: ' + this._moduleName + ': Destroying controller instance'); }
 		delete this._value;
+		this._initialised = false;
 		if (this._appCore._logLevel >= 4) { console.log('AppCore: ' + this._moduleName + ': Controller instance destroyed'); }
 		//this.emit('destroyed');
 	};
@@ -493,15 +497,18 @@
 	 * @param definition
 	 */
 	AppCore.prototype.run = function (definition, callback) {
-		var i;
-		
 		if (definition) {
 			this._run.push(definition);
+		}
+		
+		if (definition && !this._initialised) {
 			return this;
 		}
 		
+		this._initialised = true;
+		
 		// Execute all run blocks
-		this._executeQueue(this._run, function (err, valueArr) {
+		this._appCore._executeQueue(this._run, function (err, valueArr) {
 			if (callback) { callback(err, valueArr); }
 		});
 		
