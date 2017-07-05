@@ -17,6 +17,110 @@
 	var singelton;
 	
 	/**
+	 * A class that encapsulates a module's lifecycle.
+	 * @param {AppCore} appCore The AppCore instance that this module
+	 * belongs to.
+	 * @param {String} moduleName The module name.
+	 * @constructor
+	 */
+	var AppCoreModule = function (appCore, moduleName) {
+		this._appCore = appCore;
+		this._moduleName = moduleName;
+		this._config = [];
+		this._run = [];
+		
+		if (this._appCore._logLevel >= 4) { console.log('AppCore: ' + this._moduleName + ': Init...'); }
+	};
+	
+	/**
+	 * Config functions are checked for dependencies and run as
+	 * soon as they are declared.
+	 * @param definition
+	 */
+	AppCoreModule.prototype.config = function (definition) {
+		var i;
+		
+		if (definition) {
+			this._config.push(definition);
+			return this;
+		}
+		
+		// Execute all config blocks
+		this._appCore._executeQueue(this._config, function (err, valueArr) {});
+		
+		return this;
+	};
+	
+	/**
+	 * Run functions are executed once the AppCore is bootstrapped.
+	 * @param definition
+	 */
+	AppCoreModule.prototype.run = function (definition) {
+		var i;
+		
+		if (definition) {
+			this._run.push(definition);
+			return this;
+		}
+		
+		// Execute all run blocks
+		this._appCore._executeQueue(this._run, function (err, valueArr) {});
+		
+		return this;
+	};
+	
+	/**
+	 * Controller functions are executed as they are requested from
+	 * a dependency injection. If a controller has already been
+	 * injected previously then the existing return value is returned
+	 * unless the controller has been destroyed using module.destroy()
+	 * in which case it is executed again and its return value stored
+	 * against it again.
+	 * @param definition
+	 */
+	AppCoreModule.prototype.controller = function (definition, callback) {
+		var self = this;
+		
+		// Check if we were passed a controller function
+		if (definition) {
+			this._controller = definition;
+			if (this._appCore._logLevel >= 4) { console.log('AppCore: ' + this._moduleName + ': Controller defined'); }
+			return this;
+		}
+		
+		// Check if we have a pre-cached controller return value
+		if (this._value) {
+			if (this._appCore._logLevel >= 4) { console.log('AppCore: ' + this._moduleName + ': Returning cached value'); }
+			if (callback) { callback(false, self._value); }
+			return this._value;
+		}
+		
+		// Resolve dependencies, execute the controller and store the
+		// return value
+		self._appCore._getDependencies(self._moduleName, self._controller, function (err, argsArr) {
+			if (self._appCore._logLevel >= 4) { console.log('AppCore: ' + self._moduleName + ': All dependencies found, executing controller...'); }
+			self._value = self._controller.apply(self, argsArr);
+			
+			if (self._appCore._logLevel >= 4) { console.log('AppCore: ' + self._moduleName + ': Controller executed'); }
+			if (callback) { callback(false, self._value); }
+		});
+	};
+	
+	/**
+	 * Destroys a module's cached controller return data which
+	 * means next time the module is requested the controller will
+	 * be re-executed.
+	 */
+	AppCoreModule.prototype.destroy = function () {
+		// Fire destroy event
+		//this.emit('destroy');
+		if (this._appCore._logLevel >= 4) { console.log('AppCore: ' + this._moduleName + ': Destroying controller instance'); }
+		delete this._value;
+		if (this._appCore._logLevel >= 4) { console.log('AppCore: ' + this._moduleName + ': Controller instance destroyed'); }
+		//this.emit('destroyed');
+	};
+	
+	/**
 	 * The main application class that ties all the application
 	 * modules together and exposes the appCore to the global scope
 	 * via window.appCore.
@@ -36,6 +140,11 @@
 		// Set a log level so we only show warnings (2) and errors (1)
 		// level 3 and 4 are info - lots of console spamming
 		this._logLevel = 2;
+		
+		console.log('----------------------------------------------');
+		console.log('| Powered By Irrelon AppCore                 |');
+		console.log('| https://github.com/irrelon/irrelon-appcore |');
+		console.log('----------------------------------------------');
 	};
 	
 	/**
@@ -56,13 +165,55 @@
 	};
 	
 	/**
-	 * Executes the passed function once all it's required dependencies
-	 * have loaded.
-	 * @param {Function} functionDefinition The function to execute once
-	 * all its dependencies have been met.
-	 * @returns {AppCore} Returns "this" to allow chaining.
+	 * Gets / registers a module with the application.
+	 * @param {String} moduleName The name of the module to define.
+	 * @param {Function=} controllerDefinition Optional. The function to
+	 * assign as the module's controller. If omitted we will return the module
+	 * specified by the "name" argument if it exists.
+	 * @returns {Function|AppCore} If "moduleDefinition" is provided, returns
+	 * "this" to allow chaining. If "moduleDefinition" is omitted,
+	 * returns the module specified by the "name" argument.
 	 */
-	AppCore.prototype.depends = function (functionDefinition) {
+	AppCore.prototype.module = function (moduleName, controllerDefinition) {
+		var module;
+		
+		if (!controllerDefinition) {
+			module = this._modules[moduleName];
+			
+			if (!module) {
+				throw('Module with name "' + moduleName + '" not defined!');
+			}
+			
+			return this._modules[moduleName];
+		}
+		
+		this._modules[moduleName] = new AppCoreModule(this, moduleName);
+		
+		if (controllerDefinition) {
+			this._modules[moduleName].controller(controllerDefinition);
+		}
+		
+		// Now inform any waiting dependants that this module is here
+		this._moduleLoaded(moduleName);
+		
+		// Allow chaining
+		return this._modules[moduleName];
+	};
+	
+	/**
+	 * Scans a function definition for dependencies and waits for those
+	 * dependencies to become available, then calls back to the waiting
+	 * code with the controller return data for each dependency.
+	 * @param {String} dependantName The dependant module name (the one
+	 * waiting for the dependencies to become available).
+	 * @param {Function} definition The function with optional arguments
+	 * that represent dependencies to inject.
+	 * @param {Function} callback The callback function to call once all
+	 * the dependencies are available.
+	 * @returns {AppCore}
+	 * @private
+	 */
+	AppCore.prototype._getDependencies = function (dependantName, definition, callback) {
 		var moduleDeps,
 			moduleDepsArr,
 			depArgumentArr = [],
@@ -71,17 +222,21 @@
 			depIndex,
 			depTimeout = [];
 		
-		if (!functionDefinition) {
-			throw('You must provide a function as the first argument to appCore.depends()!');
+		if (!definition) {
+			throw('No function provided to AppCoreModule._getDependencies()!');
 		}
 		
 		// Convert dependency list to an array
-		moduleDeps = this._dependencyList(functionDefinition);
+		moduleDeps = this._dependencyList(definition);
 		moduleDepsArr = moduleDeps.arr;
 		
 		// Check if the module has dependencies
 		if (!moduleDepsArr.length) {
 			// No dependencies were found
+			if (this._logLevel >= 4) { console.log('AppCore: ' + dependantName + ': Has no dependencies'); }
+			
+			// We have our dependencies, send them back
+			callback(false, depArgumentArr);
 			return this;
 		}
 		
@@ -105,22 +260,228 @@
 			
 			// Check if we have all the dependencies we need
 			if (dependenciesSatisfied === moduleDepsArr.length) {
-				// We have our dependencies, load the module! YAY!
-				return functionDefinition.apply(functionDefinition, depArgumentArr);
+				// We have our dependencies, send them back
+				return callback(false, depArgumentArr);
 			}
 		};
 		
 		// Register our dependency handler for each dependency
+		if (this._logLevel >= 4) { console.log('AppCore: ' + dependantName + ': Getting dependencies', moduleDepsArr); }
 		for (depIndex = 0; depIndex < moduleDepsArr.length; depIndex++) {
 			// Create a timeout that will cause a browser error if we are
 			// waiting too long for a dependency to arrive
-			depTimeout[depIndex] = setTimeout(this.generateDependencyTimeout(moduleDeps.func, moduleDepsArr[depIndex]), 3000);
+			depTimeout[depIndex] = setTimeout(this.generateDependencyTimeout(dependantName, moduleDepsArr[depIndex]), 3000);
 			
 			// Now ask to wait for the module
-			this._waitForModule(moduleDepsArr[depIndex], gotDependency);
+			this._waitForModule(dependantName, moduleDepsArr[depIndex], gotDependency);
 		}
 		
 		return this;
+	};
+	
+	/**
+	 * Gets an array of dependency names.
+	 * @param {Function} definition The function to get dependency
+	 * names for.
+	 * @returns {{arr: Array, name: *}}
+	 * @private
+	 */
+	AppCore.prototype._dependencyList = function (definition) {
+		var moduleString,
+			moduleDeps,
+			moduleDepsArr = [],
+			moduleRegExp = /^function(.*?)\((.*?)\)/gi;
+		
+		// Stringify the module function
+		moduleString = definition.toString();
+		moduleString = moduleString
+			.replace(/\n/g, '')
+			.replace(/\r/g, '')
+			.replace(/\t/g, '');
+		
+		// Scan module function string to extract dependencies
+		// via the regular expression. The dependencies this module
+		// has will be a string in the moduleDeps array at index 2
+		// if any dependencies were provided.
+		moduleDeps = moduleRegExp.exec(moduleString);
+		
+		if (moduleDeps && moduleDeps.length) {
+			// Clean the function name and dependency list by removing whitespace
+			moduleDeps[1] = moduleDeps[1].replace(/ /gi, '');
+			moduleDeps[2] = moduleDeps[2].replace(/ /gi, '');
+			
+			if (moduleDeps[2] !== "") {
+				// Convert dependency list to an array
+				moduleDepsArr = moduleDeps[2].split(',');
+			}
+		}
+		
+		return {
+			arr: moduleDepsArr,
+			name: moduleDeps[1] || moduleDeps[0]
+		};
+	};
+	
+	/**
+	 * Generates a function that will be called by a timeout when a
+	 * dependency does not load in the given time.
+	 * @param {String} moduleName The name of the module that is waiting
+	 * for a module to load.
+	 * @param {String} dependencyName The name of the dependency module
+	 * that we are waiting for.
+	 * @returns {Function}
+	 */
+	AppCore.prototype.generateDependencyTimeout = function (moduleName, dependencyName) {
+		var self = this;
+		
+		return function () {
+			if (self._logLevel >= 1) { console.error('AppCore: ' + moduleName + ': Dependency failed to load in time: ' + dependencyName); }
+		};
+	};
+	
+	/**
+	 * Adds the passed callback function to an array that will be
+	 * processed once the named module has loaded.
+	 * @param {String} dependantName The name of the module waiting
+	 * for the dependency.
+	 * @param {String} moduleName The name of the module to wait for.
+	 * @param {Function} callback The function to call once the
+	 * named module has loaded.
+	 * @returns {AppCore} Returns "this" for method chaining.
+	 * @private
+	 */
+	AppCore.prototype._waitForModule = function (dependantName, moduleName, callback) {
+		var self = this;
+		
+		// Check if the module we are waiting for already exists
+		if (this._modules[moduleName] !== undefined) {
+			if (this._logLevel >= 4) { console.log('AppCore: ' + dependantName + ': Dependency "' + moduleName + '" exists'); }
+			// The module is already loaded, ask for it
+			this._modules[moduleName].config();
+			this._modules[moduleName].controller(undefined, function (err, value) {
+				self._modules[moduleName].run();
+				if (self._logLevel >= 4) { console.log('AppCore: ' + dependantName + ': Dependency "' + moduleName + '" loaded'); }
+				callback(moduleName, value);
+			});
+			return this;
+		}
+		
+		// Add the callback to the waiting list for this module
+		if (this._logLevel >= 4) { console.log('AppCore: ' + dependantName + ': Dependency "' + moduleName + '" does not yet exist'); }
+		this._waiting[moduleName] = this._waiting[moduleName] || [];
+		this._waiting[moduleName].push(function (moduleName, value) {
+			if (self._logLevel >= 4) { console.log('AppCore: ' + dependantName + ': Dependency "' + moduleName + '" now exists'); }
+			callback(moduleName, value);
+		});
+		
+		return this;
+	};
+	
+	/**
+	 * Called when a module has loaded and will loop the array of
+	 * waiting functions that have registered to be called when the
+	 * named module has loaded, telling them the module is now
+	 * available to use.
+	 * @param {String} moduleName The name of the module that has loaded.
+	 * @private
+	 */
+	AppCore.prototype._moduleLoaded = function (moduleName) {
+		var self = this,
+			waitingArr,
+			waitingIndex;
+		
+		// Tell any modules waiting for this one that we are
+		// loaded and ready
+		waitingArr = this._waiting[moduleName] || null;
+		
+		if (!waitingArr || !waitingArr.length) {
+			// Nothing is waiting for us, exit
+			return;
+		}
+		
+		// Now get the module's controller result by executing it
+		if (self._logLevel >= 4) { console.log('AppCore: ' + moduleName + ': ' + waitingArr.length + ' Dependants are waiting for "' + moduleName + '" and it now exists, executing...'); }
+		this._modules[moduleName].config();
+		this._modules[moduleName].controller(undefined, function (err, value) {
+			self._modules[moduleName].run();
+			// Loop the waiting array and tell the receiver that
+			// this module has loaded
+			for (waitingIndex = 0; waitingIndex < waitingArr.length; waitingIndex++) {
+				waitingArr[waitingIndex](moduleName, value);
+			}
+			
+			// Clear the waiting array for this module
+			delete self._waiting[moduleName];
+		});
+	};
+	
+	/**
+	 * Takes an array of functions and waits for each function's
+	 * dependencies to be resolved and then executes the function.
+	 * This is done in order, one at a time.
+	 * @param {Array} arr An array of functions.
+	 * @param {Function} callback Callback to call when complete.
+	 * @private
+	 */
+	AppCore.prototype._executeQueue = function (arr, callback) {
+		var self = this,
+			definition,
+			nextItem,
+			valueArr,
+			i;
+		
+		i = -1;
+		valueArr = [];
+		
+		nextItem = function () {
+			var deps;
+			
+			i++;
+			
+			definition = arr[i];
+			if (!definition) {
+				return callback(false, valueArr);
+			}
+			
+			deps = self._dependencyList(definition);
+			
+			self._getDependencies(deps.name, definition, function (err, argsArr) {
+				// Execute the item function passing the dependencies
+				// and store the return value in the valueArr
+				valueArr[i] = definition.apply(self, argsArr);
+				
+				// Check for more items in the array
+				if (i < arr.length) {
+					// Process the next item
+					return nextItem();
+				}
+				
+				// All processing finished, callback now
+				return callback(false, valueArr);
+			});
+		};
+		
+		// Now start the processing
+		nextItem();
+	};
+	
+	/**
+	 * Starts the app core - this defines the entry point into
+	 * your application by the passed function.
+	 * @param {Function} definition The function to call to start
+	 * the application. Will wait for all the function's dependencies
+	 * to become available before calling it.
+	 */
+	AppCore.prototype.bootstrap = function (definition) {
+		var self = this,
+			deps = self._dependencyList(definition);
+		
+		if (self._logLevel >= 4) { console.log('AppCore: Bootstrapping...'); }
+		this._getDependencies(deps.name, definition, function (err, depArr) {
+			if (self._logLevel >= 4) { console.log('AppCore: Bootstrap complete, executing bootstrap callback...'); }
+			// Now execute the bootstrap function
+			definition.apply(definition, depArr);
+		});
 	};
 	
 	AppCore.prototype.sanityCheck = function () {
@@ -163,234 +524,6 @@
 				}
 			}
 		}
-	};
-	
-	AppCore.prototype.getModule = function (moduleName, callback) {
-		this._waitForModule(moduleName, callback);
-		return this;
-	};
-	
-	/**
-	 * Gets / registers a module with the application and executes the
-	 * module's function once all it's required dependencies
-	 * have loaded.
-	 * @param {String} moduleName The name of the module to define.
-	 * @param {Function=} moduleDefinition Optional. The function that
-	 * returns the module. If omitted we will return the module
-	 * specified by the "name" argument if it exists.
-	 * @returns {Function|AppCore} If "moduleDefinition" is provided, returns
-	 * "this" to allow chaining. If "moduleDefinition" is omitted,
-	 * returns the module specified by the "name" argument.
-	 */
-	AppCore.prototype.module = function (moduleName, moduleDefinition) {
-		var self = this,
-			moduleDeps,
-			moduleDepsArr,
-			depArgumentArr = [],
-			dependenciesSatisfied = 0,
-			gotDependency,
-			depIndex,
-			depTimeout = [];
-		
-		if (!moduleName) {
-			throw('You must name your module!');
-		}
-		
-		if (!moduleDefinition) {
-			return this._modules[moduleName];
-		}
-		
-		if (this._modules[moduleName] !== undefined) {
-			throw('Cannot redefine module "' + moduleName + '" - it has already been defined!');
-		}
-		
-		if (this._logLevel >= 4) { console.log('AppCore: ' + moduleName + ': Init...'); }
-		
-		// Convert dependency list to an array
-		moduleDeps = this._dependencyList(moduleDefinition);
-		moduleDepsArr = moduleDeps.arr;
-		
-		// Check if the module has dependencies
-		if (!moduleDepsArr.length) {
-			// No dependencies were found, just register the module
-			if (this._logLevel >= 4) { console.log('AppCore: ' + moduleName + ': Has no dependencies'); }
-			return this._registerModule(moduleName, moduleDefinition, []);
-		}
-		
-		if (this._logLevel >= 4) { console.log('AppCore: ' + moduleName + ': Has ' + moduleDepsArr.length + ' dependenc' + (moduleDepsArr.length > 1 ? 'ies' : 'y') + ' (' + moduleDepsArr.join(', ') + ')'); }
-		
-		// Grab the dependencies we need - this is a really simple way
-		// to check we got our dependencies by how many times this function
-		// gets called. Quick and dirty - I'm writing a game of life sim
-		// here rather than a dependency injection lib after all.
-		gotDependency = function (dependencyName, dependency) {
-			var depArgumentIndex;
-			
-			dependenciesSatisfied++;
-			
-			if (self._logLevel >= 4) { console.log('AppCore: ' + moduleName + ': Found dependency "' + dependencyName + '"'); }
-			
-			// Check which index this dependency should be in
-			depArgumentIndex = moduleDepsArr.indexOf(dependencyName);
-			
-			// Clear the timeout for the dependency
-			clearTimeout(depTimeout[depArgumentIndex]);
-			depTimeout[depArgumentIndex] = 0;
-			
-			// Assign the dependency to the correct argument index
-			depArgumentArr[depArgumentIndex] = dependency;
-			
-			// Check if we have all the dependencies we need
-			if (dependenciesSatisfied === moduleDepsArr.length) {
-				// We have our dependencies, load the module! YAY!
-				if (self._logLevel >= 4) { console.log('AppCore: ' + moduleName + ': Has all required dependencies, loading...'); }
-				return self._registerModule(moduleName, moduleDefinition, depArgumentArr);
-			}
-		};
-		
-		// Register our dependency handler for each dependency
-		for (depIndex = 0; depIndex < moduleDepsArr.length; depIndex++) {
-			// Create a timeout that will cause a browser error if we are
-			// waiting too long for a dependency to arrive
-			depTimeout[depIndex] = setTimeout(this.generateDependencyTimeout(moduleName, moduleDepsArr[depIndex]), 3000);
-			
-			// Now ask to wait for the module
-			this._waitForModule(moduleDepsArr[depIndex], gotDependency);
-		}
-		
-		return this;
-	};
-	
-	/**
-	 * Generates a function that will be called by a timeout when a
-	 * dependency does not load in the given time.
-	 * @param {String} moduleName The name of the module that is waiting
-	 * for a module to load.
-	 * @param {String} dependencyName The name of the dependency module
-	 * that we are waiting for.
-	 * @returns {Function}
-	 */
-	AppCore.prototype.generateDependencyTimeout = function (moduleName, dependencyName) {
-		return function () {
-			if (this._logLevel >= 1) { console.error('AppCore: ' + moduleName + ': Dependency failed to load in time: ' + dependencyName); }
-		};
-	};
-	
-	/**
-	 * Reads a function's definition and finds argument dependencies.
-	 * @param moduleDefinition
-	 * @returns {Array} An array of dependency names.
-	 * @private
-	 */
-	AppCore.prototype._dependencyList = function (moduleDefinition) {
-		var moduleString,
-			moduleDeps,
-			moduleDepsArr,
-			moduleRegExp = /^function(.*?)\((.*?)\)/gi;
-		
-		// Stringify the module function
-		moduleString = moduleDefinition.toString();
-		moduleString = moduleString
-			.replace(/\n/g, '')
-			.replace(/\r/g, '')
-			.replace(/\t/g, '');
-		
-		// Scan module function string to extract dependencies
-		// via the regular expression. The dependencies this module
-		// has will be a string in the moduleDeps array at index 2
-		// if any dependencies were provided.
-		moduleDeps = moduleRegExp.exec(moduleString);
-		
-		// Check if the module has dependencies
-		if (!moduleDeps || !moduleDeps.length || moduleDeps[2] === "") {
-			// No dependencies were found
-			return {
-				arr: []
-			};
-		}
-		
-		// Clean the dependency list by removing whitespace
-		moduleDeps[2] = moduleDeps[2].replace(/ /gi, '');
-		
-		// Convert dependency list to an array
-		moduleDepsArr = moduleDeps[2].split(',');
-		
-		return {
-			arr: moduleDepsArr,
-			func: moduleDeps[0]
-		};
-	};
-	
-	/**
-	 * Adds the passed callback function to an array that will be
-	 * processed once the named module has loaded.
-	 * @param {String} moduleName The name of the module to wait for.
-	 * @param {Function} callback The function to call once the
-	 * named module has loaded.
-	 * @returns {AppCore} Returns "this" for method chaining.
-	 * @private
-	 */
-	AppCore.prototype._waitForModule = function (moduleName, callback) {
-		// Check if the module we are waiting for already exists
-		if (this._modules[moduleName] !== undefined) {
-			// The module is already loaded, callback now
-			callback(moduleName, this._modules[moduleName]);
-			return this;
-		}
-		
-		// Add the callback to the waiting list for this module
-		this._waiting[moduleName] = this._waiting[moduleName] || [];
-		this._waiting[moduleName].push(callback);
-		
-		return this;
-	};
-	
-	/**
-	 * Called when a module has loaded and will loop the array of
-	 * waiting functions that have registered to be called when the
-	 * named module has loaded, telling them the module is now
-	 * available to use.
-	 * @param {String} moduleName The name of the module that has loaded.
-	 * @private
-	 */
-	AppCore.prototype._moduleLoaded = function (moduleName) {
-		var waitingArr,
-			waitingIndex;
-		
-		// Tell any modules waiting for this one that we are
-		// loaded and ready
-		waitingArr = this._waiting[moduleName] || null;
-		
-		if (!waitingArr || !waitingArr.length) {
-			// Nothing is waiting for us, exit
-			return;
-		}
-		
-		// Loop the waiting array and tell the receiver that
-		// this module has loaded
-		for (waitingIndex = 0; waitingIndex < waitingArr.length; waitingIndex++) {
-			waitingArr[waitingIndex](moduleName, this._modules[moduleName]);
-		}
-		
-		// Clear the waiting array for this module
-		delete this._waiting[moduleName];
-	};
-	
-	/**
-	 * Registers a module by executing the module function and
-	 * storing the result under the _modules object by name.
-	 * @param {String} moduleName The name of the module to store.
-	 * @param {Function} func The module function to execute and
-	 * store the return value of.
-	 * @param {Array} args The array of modules that this module
-	 * asked for as dependencies.
-	 * @private
-	 */
-	AppCore.prototype._registerModule = function (moduleName, func, args) {
-		if (this._logLevel >= 4) { console.log('AppCore: ' + moduleName + ': Loaded'); }
-		this._modules[moduleName] = func.apply(func, args) || null;
-		this._moduleDefs[moduleName] = func;
-		this._moduleLoaded(moduleName);
 	};
 	
 	singelton = new AppCore();
