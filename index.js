@@ -33,7 +33,26 @@
 		// are waiting for a module to become available / loaded
 		this._waiting = {};
 		
+		// Set a log level so we only show warnings (2) and errors (1)
+		// level 3 and 4 are info - lots of console spamming
 		this._logLevel = 2;
+	};
+	
+	/**
+	 * Gets / sets the logging level that AppCore will use to explain
+	 * what it is doing. Lower levels (1 and 2) are error and warnings,
+	 * higher levels (up to 4) are info. Setting to 4 is asking for all
+	 * levels 4 and below.
+	 * @param {Number=} newLevel If provided, sets the new logging level.
+	 * @returns {*}
+	 */
+	AppCore.prototype.logLevel = function (newLevel) {
+		if (newLevel !== undefined) {
+			this._logLevel = newLevel;
+			return this;
+		}
+		
+		return this._logLevel;
 	};
 	
 	/**
