@@ -200,6 +200,11 @@ AppCore.prototype._dependencyList = function (definition) {
 		moduleDepsArr = definition.slice(0, definition.length - 1);
 		moduleString = definition[definition.length - 1].toString();
 		
+		// Loop the array and remove any undefined's
+		while (moduleDepsArr.indexOf(undefined) > -1) {
+			moduleDepsArr.splice(moduleDepsArr.indexOf(undefined), 1);
+		}
+		
 		moduleString = moduleString
 			.replace(/\n/g, '')
 			.replace(/\r/g, '')
@@ -631,12 +636,12 @@ AppCoreModule.prototype.controller = function (definition, callback) {
  */
 AppCoreModule.prototype.destroy = function () {
 	// Fire destroy event
-	//this.emit('destroy');
+	this.emit('destroy');
 	if (this._appCore._logLevel >= 4) { console.log('AppCore: ' + this._moduleName + ': Destroying controller instance'); }
 	delete this._value;
 	this._initialised = false;
 	if (this._appCore._logLevel >= 4) { console.log('AppCore: ' + this._moduleName + ': Controller instance destroyed'); }
-	//this.emit('destroyed');
+	this.emit('destroyed');
 };
 
 module.exports = AppCoreModule;
