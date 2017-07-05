@@ -508,7 +508,7 @@
 		this._initialised = true;
 		
 		// Execute all run blocks
-		this._appCore._executeQueue(this._run, function (err, valueArr) {
+		this._executeQueue(this._run, function (err, valueArr) {
 			if (callback) { callback(err, valueArr); }
 		});
 		
