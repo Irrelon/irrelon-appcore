@@ -146,6 +146,11 @@
 		}
 	};
 	
+	AppCore.prototype.getModule = function (moduleName, callback) {
+		this._waitForModule(moduleName, callback);
+		return this;
+	};
+	
 	/**
 	 * Gets / registers a module with the application and executes the
 	 * module's function once all it's required dependencies
@@ -174,11 +179,6 @@
 		
 		if (!moduleDefinition) {
 			return this._modules[moduleName];
-		}
-		
-		if (typeof moduleDefinition === 'function') {
-			self._waitForModule(moduleName, moduleDefinition);
-			return this;
 		}
 		
 		if (this._modules[moduleName] !== undefined) {
