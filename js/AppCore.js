@@ -513,7 +513,6 @@ singelton = new AppCore();
 
 // Create the appCore instance and add to global scope
 if (typeof module  !== 'undefined' && typeof module.exports !== 'undefined') {
-	debugger;
 	module.exports = singelton;
 }
 

@@ -1,9 +1,9 @@
 {
   "name": "irrelon-appcore",
-  "version": "1.0.22",
+  "version": "1.0.23",
   "description": "A very lightweight application dependency manager for maintaining clean modularised code without polluting the global namespace.",
   "main": "js/AppCore.js",
-  "browser": "index.js",
+  "browserify": "js/AppCore.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
