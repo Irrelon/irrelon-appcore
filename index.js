@@ -433,18 +433,15 @@
 		var self = this,
 			definition,
 			nextItem,
-			valueArr,
-			i;
+			valueArr;
 		
-		i = -1;
 		valueArr = [];
 		
 		nextItem = function () {
 			var deps;
 			
-			i++;
+			definition = arr.shift();
 			
-			definition = arr[i];
 			if (!definition) {
 				return callback(false, valueArr);
 			}
@@ -454,16 +451,15 @@
 			self._getDependencies(deps.name, definition, function (err, argsArr) {
 				// Execute the item function passing the dependencies
 				// and store the return value in the valueArr
-				valueArr[i] = definition.apply(self, argsArr);
+				valueArr.push(definition.apply(self, argsArr));
 				
-				// Check for more items in the array
-				if (i < arr.length) {
+				if (arr.length) {
 					// Process the next item
 					return nextItem();
 				}
 				
 				// All processing finished, callback now
-				return callback(false, valueArr);
+				callback(false, valueArr);
 			});
 		};
 		
