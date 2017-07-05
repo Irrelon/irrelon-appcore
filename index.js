@@ -105,8 +105,10 @@
 		// Resolve dependencies, execute the controller and store the
 		// return value
 		self._appCore._getDependencies(self._moduleName, self._controller, function (err, argsArr) {
+			var definition = self._appCore._getFinalFunc(self._controller);
+			
 			if (self._appCore._logLevel >= 4) { console.log('AppCore: ' + self._moduleName + ': All dependencies found, executing controller...'); }
-			self._value = self._controller.apply(self, argsArr);
+			self._value = definition.apply(self, argsArr);
 			
 			if (self._appCore._logLevel >= 4) { console.log('AppCore: ' + self._moduleName + ': Controller executed'); }
 			if (callback) { callback(false, self._value); }
@@ -302,33 +304,53 @@
 			moduleDepsArr = [],
 			moduleRegExp = /^function(.*?)\((.*?)\)/gi;
 		
-		// Stringify the module function
-		moduleString = definition.toString();
-		moduleString = moduleString
-			.replace(/\n/g, '')
-			.replace(/\r/g, '')
-			.replace(/\t/g, '');
-		
-		// Scan module function string to extract dependencies
-		// via the regular expression. The dependencies this module
-		// has will be a string in the moduleDeps array at index 2
-		// if any dependencies were provided.
-		moduleDeps = moduleRegExp.exec(moduleString);
-		
-		if (moduleDeps && moduleDeps.length) {
-			// Clean the function name and dependency list by removing whitespace
-			moduleDeps[1] = moduleDeps[1].replace(/ /gi, '');
-			moduleDeps[2] = moduleDeps[2].replace(/ /gi, '');
+		// Handle array style
+		if (definition instanceof Array) {
+			// We have been given a list of dependencies already
+			moduleDepsArr = definition.slice(0, definition.length - 1);
+			moduleString = definition[definition.length - 1].toString();
 			
-			if (moduleDeps[2] !== "") {
-				// Convert dependency list to an array
-				moduleDepsArr = moduleDeps[2].split(',');
+			moduleString = moduleString
+				.replace(/\n/g, '')
+				.replace(/\r/g, '')
+				.replace(/\t/g, '');
+			
+			moduleDeps = moduleRegExp.exec(moduleString);
+			
+			if (moduleDeps && moduleDeps.length) {
+				// Clean the function name and dependency list by removing whitespace
+				moduleDeps[1] = moduleDeps[1].replace(/ /gi, '');
+				moduleDeps[2] = moduleDeps[2].replace(/ /gi, '');
+			}
+		} else {
+			// Stringify the module function
+			moduleString = definition.toString();
+			moduleString = moduleString
+				.replace(/\n/g, '')
+				.replace(/\r/g, '')
+				.replace(/\t/g, '');
+			
+			// Scan module function string to extract dependencies
+			// via the regular expression. The dependencies this module
+			// has will be a string in the moduleDeps array at index 2
+			// if any dependencies were provided.
+			moduleDeps = moduleRegExp.exec(moduleString);
+			
+			if (moduleDeps && moduleDeps.length) {
+				// Clean the function name and dependency list by removing whitespace
+				moduleDeps[1] = moduleDeps[1].replace(/ /gi, '');
+				moduleDeps[2] = moduleDeps[2].replace(/ /gi, '');
+				
+				if (moduleDeps[2] !== "") {
+					// Convert dependency list to an array
+					moduleDepsArr = moduleDeps[2].split(',');
+				}
 			}
 		}
 		
 		return {
 			arr: moduleDepsArr,
-			name: moduleDeps[1] || moduleDeps[0]
+			name: moduleDeps[1] || moduleDeps[0] || 'anonymous'
 		};
 	};
 	
@@ -453,6 +475,8 @@
 			deps = self._dependencyList(definition);
 			
 			self._getDependencies(deps.name, definition, function (err, argsArr) {
+				definition = self._getFinalFunc(definition);
+				
 				// Execute the item function passing the dependencies
 				// and store the return value in the valueArr
 				valueArr.push(definition.apply(self, argsArr));
@@ -534,6 +558,8 @@
 			deps = self._dependencyList(definition);
 			
 			self._getDependencies(deps.name, definition, function (err, depArr) {
+				definition = self._getFinalFunc(definition);
+				
 				// Execute any run blocks
 				self.run(undefined, function () {
 					// Now execute the bootstrap function
@@ -584,6 +610,14 @@
 				}
 			}
 		}
+	};
+	
+	AppCore.prototype._getFinalFunc = function (data) {
+		if (data instanceof Array) {
+			return data[data.length - 1];
+		}
+		
+		return data;
 	};
 	
 	singelton = new AppCore();

@@ -22,3 +22,7 @@ appCore.module('Test', function (Module1) {
 	.run(function () {
 		console.log('Module Run Config block 1 executed');
 	});
+
+appCore.run(['Test', function (test) {
+	console.log('Running with moo');
+}]);
