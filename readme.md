@@ -4,7 +4,7 @@ A very lightweight application dependency manager for maintaining clean modulari
 # Usage
 ## Include in HEAD
 ```html
-<script type="text/javascript" src="./AppCore.js"></script>
+<script type="text/javascript" src="./index.js"></script>
 ```
 
 Once included, AppCore exposes itself via window.appCore.
