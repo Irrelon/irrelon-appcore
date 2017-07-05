@@ -1,4 +1,4 @@
-var appCore = require('../../index');
+var appCore = require('../../js/AppCore');
 
 appCore.module('Module1', function (Module2) {
 	var Module1 = function () {

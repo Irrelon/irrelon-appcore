@@ -1,19 +1,29 @@
 {
-	"name": "irrelon-appcore",
-	"version": "1.0.21",
-	"description": "A very lightweight application dependency manager for maintaining clean modularised code without polluting the global namespace.",
-	"main": "index.js",
-	"scripts": {
-		"test": "echo \"Error: no test specified\" && exit 1"
-	},
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/Irrelon/irrelon-appcore.git"
-	},
-	"author": "Rob Evans (Irrelon Software Limited)",
-	"license": "MIT",
-	"bugs": {
-		"url": "https://github.com/Irrelon/irrelon-appcore/issues"
-	},
-	"homepage": "https://github.com/Irrelon/irrelon-appcore"
+  "name": "irrelon-appcore",
+  "version": "1.0.22",
+  "description": "A very lightweight application dependency manager for maintaining clean modularised code without polluting the global namespace.",
+  "main": "js/AppCore.js",
+  "browser": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Irrelon/irrelon-appcore.git"
+  },
+  "author": "Rob Evans (Irrelon Software Limited)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Irrelon/irrelon-appcore/issues"
+  },
+  "homepage": "https://github.com/Irrelon/irrelon-appcore",
+  "dependencies": {
+    "aliasify": "^2.1.0",
+    "browserify-derequire": "^0.9.4",
+    "derequire": "^2.0.6",
+    "grunt": "^1.0.1",
+    "grunt-browserify": "^5.0.0",
+    "irrelon-emitter": "^2.0.2",
+    "stringify": "^5.1.0"
+  }
 }

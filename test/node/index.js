@@ -1,4 +1,4 @@
-var appCore = require('../../index');
+var appCore = require('../../js/AppCore');
 
 appCore.logLevel(4);
 
