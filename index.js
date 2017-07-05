@@ -176,6 +176,11 @@
 			return this._modules[moduleName];
 		}
 		
+		if (typeof moduleDefinition === 'function') {
+			self._waitForModule(moduleName, moduleDefinition);
+			return this;
+		}
+		
 		if (this._modules[moduleName] !== undefined) {
 			throw('Cannot redefine module "' + moduleName + '" - it has already been defined!');
 		}
