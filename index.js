@@ -37,7 +37,7 @@
 	 * soon as they are declared.
 	 * @param definition
 	 */
-	AppCoreModule.prototype.config = function (definition) {
+	AppCoreModule.prototype.config = function (definition, callback) {
 		var i;
 		
 		if (definition) {
@@ -46,7 +46,9 @@
 		}
 		
 		// Execute all config blocks
-		this._appCore._executeQueue(this._config, function (err, valueArr) {});
+		this._appCore._executeQueue(this._config, function (err, valueArr) {
+			if (callback) { callback(err, valueArr); }
+		});
 		
 		return this;
 	};
@@ -55,7 +57,7 @@
 	 * Run functions are executed once the AppCore is bootstrapped.
 	 * @param definition
 	 */
-	AppCoreModule.prototype.run = function (definition) {
+	AppCoreModule.prototype.run = function (definition, callback) {
 		var i;
 		
 		if (definition) {
@@ -64,7 +66,9 @@
 		}
 		
 		// Execute all run blocks
-		this._appCore._executeQueue(this._run, function (err, valueArr) {});
+		this._appCore._executeQueue(this._run, function (err, valueArr) {
+			if (callback) { callback(err, valueArr); }
+		});
 		
 		return this;
 	};
@@ -132,6 +136,8 @@
 		// modules that are defined by appCore.module().
 		this._modules = {};
 		this._moduleDefs = {};
+		this._config = [];
+		this._run = [];
 		
 		// The object that holds a reference to callbacks that
 		// are waiting for a module to become available / loaded
@@ -466,6 +472,47 @@
 	};
 	
 	/**
+	 * Config functions are checked for dependencies and run as
+	 * soon as they are declared.
+	 * @param definition
+	 */
+	AppCore.prototype.config = function (definition, callback) {
+		var i;
+		
+		if (definition) {
+			this._config.push(definition);
+			return this;
+		}
+		
+		// Execute all config blocks
+		this._executeQueue(this._config, function (err, valueArr) {
+			if (callback) { callback(err, valueArr); }
+		});
+		
+		return this;
+	};
+	
+	/**
+	 * Run functions are executed once the AppCore is bootstrapped.
+	 * @param definition
+	 */
+	AppCore.prototype.run = function (definition, callback) {
+		var i;
+		
+		if (definition) {
+			this._run.push(definition);
+			return this;
+		}
+		
+		// Execute all run blocks
+		this._executeQueue(this._run, function (err, valueArr) {
+			if (callback) { callback(err, valueArr); }
+		});
+		
+		return this;
+	};
+	
+	/**
 	 * Starts the app core - this defines the entry point into
 	 * your application by the passed function.
 	 * @param {Function} definition The function to call to start
@@ -474,13 +521,23 @@
 	 */
 	AppCore.prototype.bootstrap = function (definition) {
 		var self = this,
-			deps = self._dependencyList(definition);
+			deps;
 		
 		if (self._logLevel >= 4) { console.log('AppCore: Bootstrapping...'); }
-		this._getDependencies(deps.name, definition, function (err, depArr) {
-			if (self._logLevel >= 4) { console.log('AppCore: Bootstrap complete, executing bootstrap callback...'); }
-			// Now execute the bootstrap function
-			definition.apply(definition, depArr);
+		
+		// Execute any config blocks
+		self.config(undefined, function () {
+			// Get the dependencies for the bootstrap function
+			deps = self._dependencyList(definition);
+			
+			self._getDependencies(deps.name, definition, function (err, depArr) {
+				// Execute any run blocks
+				self.run(undefined, function () {
+					// Now execute the bootstrap function
+					if (self._logLevel >= 4) { console.log('AppCore: Bootstrap complete, executing bootstrap callback...'); }
+					definition.apply(definition, depArr);
+				});
+			});
 		});
 	};
 	
