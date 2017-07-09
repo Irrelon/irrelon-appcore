@@ -42,7 +42,7 @@ var AppCore = function () {
 	this._logLevel = 2;
 	
 	console.log('----------------------------------------------');
-	console.log('| Powered By Irrelon AppCore                 |');
+	console.log('| Powered by Irrelon AppCore                 |');
 	console.log('| (C)opyright ' + new Date().getFullYear() + ' Irrelon Software Limited  |');
 	console.log('| https://github.com/irrelon/irrelon-appcore |');
 	console.log('----------------------------------------------');
