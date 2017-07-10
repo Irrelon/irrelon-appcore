@@ -31,6 +31,7 @@ var AppCore = function () {
 	this._moduleDefs = {};
 	this._config = [];
 	this._run = [];
+	this.data = {};
 	
 	// The object that holds a reference to callbacks that
 	// are waiting for a module to become available / loaded
