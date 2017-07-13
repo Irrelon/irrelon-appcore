@@ -26,6 +26,10 @@ var Emitter = _dereq_('irrelon-emitter');
  * @constructor
  */
 var AppCore = function () {
+	// Determine the environment we are executing in
+	this.isServer = (typeof(module) !== 'undefined' && typeof(module.exports) !== 'undefined' && typeof window === 'undefined');
+	this.isClient = !this.isServer;
+	
 	// The object that holds references to all the app's
 	// modules that are defined by appCore.module().
 	this._modules = {};
