@@ -13,9 +13,9 @@
  */
 "use strict";
 
-var singelton;
-var AppCoreModule = require('./AppCoreModule');
-var Emitter = require('irrelon-emitter');
+var singleton,
+	AppCoreModule = require('./AppCoreModule'),
+	Emitter = require('irrelon-emitter');
 
 /**
  * The main application class that ties all the application
@@ -26,7 +26,7 @@ var Emitter = require('irrelon-emitter');
  */
 var AppCore = function () {
 	// Determine the environment we are executing in
-	this.isServer = (typeof(module) !== 'undefined' && typeof(module.exports) !== 'undefined' && typeof window === 'undefined');
+	this.isServer = (typeof module !== 'undefined' && typeof module.exports !== 'undefined' && typeof window === 'undefined');
 	this.isClient = !this.isServer;
 	
 	// The object that holds references to all the app's
@@ -520,13 +520,13 @@ AppCore.prototype._getFinalFunc = function (data) {
 	return data;
 };
 
-singelton = new AppCore();
+singleton = new AppCore();
 
 // Create the appCore instance and add to global scope
 if (typeof module  !== 'undefined' && typeof module.exports !== 'undefined') {
-	module.exports = singelton;
+	module.exports = singleton;
 }
 
 if (typeof window !== 'undefined') {
-	window.appCore = singelton;
+	window.appCore = singleton;
 }
