@@ -441,6 +441,21 @@ AppCore.prototype.run = function (definition, callback) {
 };
 
 /**
+ * Run functions are executed once the AppCore is bootstrapped.
+ * @param moduleName
+ * @param callback
+ */
+AppCore.prototype.require = function (moduleName, callback) {
+	var self = this;
+	
+	this._waitForModule('function () {}', moduleName, function (dependencyName, dependency) {
+		callback(false, dependency);
+	});
+	
+	return this;
+};
+
+/**
  * Starts the app core - this defines the entry point into
  * your application by the passed function.
  * @param {Function} definition The function to call to start
